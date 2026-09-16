@@ -137,7 +137,8 @@ function mount() {
   if (!host) return;
 
   NammaVoice.onChange((current, voices) => {
-    if (!voices.length) { host.hidden = true; return; }
+    /* Nothing to choose between with one voice, so no control. */
+    if (voices.length < 2) { host.hidden = true; return; }
     host.hidden = false;
     host.innerHTML = '<span class="voice-label">Voice</span>' + voices.map((name) =>
       `<button type="button" class="voice-choice" data-voice="${name}" ` +

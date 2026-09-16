@@ -52,7 +52,7 @@ KANNADA = re.compile(r'[ಀ-೿]')
 # two are built; the site lets a reader switch between them. DEFAULT_VOICE is what
 # someone hears before they choose anything.
 SPEAKERS = ('Suresh', 'Anu', 'Chetan', 'Vidya')
-VOICES = ('Suresh', 'Anu')
+VOICES = ('Suresh',)
 DEFAULT_VOICE = 'Suresh'
 # The model is autoregressive and sometimes keeps going after the word is finished,
 # which comes out as a short phrase rambling for seconds. Roughly, a clip should run
