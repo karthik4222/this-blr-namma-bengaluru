@@ -468,7 +468,16 @@ function speakBtn(text, size){
   if(!VOICE_OK || !text) return '';
   const safe = text.replace(/'/g, "\\'");
   const cls = size==='sm' ? 'speak-btn speak-btn-sm' : 'speak-btn';
-  return `<button class="${cls}" onclick="speakText('${safe}')" aria-label="Hear pronunciation">\uD83D\uDD0A</button>`;
+  const main = `<button class="${cls}" onclick="speakText('${safe}')" aria-label="Hear pronunciation">\uD83D\uDD0A</button>`;
+  if(size === 'sm') return main;
+  /* Phrase cards also offer the other voice for that one phrase, without changing
+     the choice above the grid. Hidden by CSS until kannada-voice.js confirms there
+     is more than one voice to switch to. */
+  return main + `<button class="speak-btn speak-alt" onclick="speakOther('${safe}')" aria-label="Hear this in the other voice" title="Hear this in the other voice">\u21C4</button>`;
+}
+function speakOther(text){
+  if(window.NammaVoice && window.NammaVoice.speakOther(text)) return;
+  speakWithBrowserVoice(text);
 }
 function speakPhrase(i){ speakText(PHRASES[i].kn); }
 

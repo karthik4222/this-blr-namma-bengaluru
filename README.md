@@ -31,6 +31,22 @@ If a phrase has no clip, the button falls back to whatever Kannada voice the vis
 device has. That is usually none, so it will be silent or sound wrong. Not broken, just
 not useful. So it is worth making sure every phrase has a clip.
 
+### Which machine renders what
+
+Two jobs, two places, because the speech model is heavy.
+
+**A few new phrases: GitHub Actions.** Add a phrase, push, and the Action renders it and
+commits the clip. A couple of minutes per phrase on their CPU runners, which is fine for
+the handful a change usually adds. This is the normal case and needs no setup from
+whoever adds the phrase.
+
+**Building a whole voice from scratch: a machine with a GPU.** All 158 phrases in one
+voice takes roughly two hours on an Apple Silicon Mac, and would be far slower on a CPU
+runner with a real chance of hitting the six-hour job limit. Do that locally and commit
+the result.
+
+So the Action is for keeping up, not for bulk work.
+
 ### I want to add a Kannada phrase
 
 Add it to the right file in `docs/data/` like you would any other entry, with its `kn`
