@@ -64,9 +64,15 @@ PER_CHARACTER = 0.10
 TOLERANCE = 1.8
 RETRY_SEEDS = (0, 1, 2, 3, 4, 5)
 
-DELIVERY = ('{speaker} speaks in a casual, conversational tone, as if talking to a friend '
-            'in everyday speech rather than reading aloud. The delivery is natural and '
-            'expressive at a moderate pace. Very high quality recording, no background noise.')
+# Keep this plain. An earlier version asked for a voice that was "casual",
+# "conversational", "as if talking to a friend" and "expressive", and the model took
+# that as licence to embellish: Anu inserted words the text did not contain, sometimes
+# without the clip even running long. Asking only for clear speech fixed it. Greedy
+# decoding was tried too and is much worse: with no randomness it can settle into a
+# loop and run away, thirty seconds of audio for a single word. So the sampling stays
+# and the instruction is what got simpler.
+DELIVERY = ('{speaker} speaks clearly at a moderate pace. '
+            'Very high quality recording, no background noise.')
 
 
 def normalize(text):
