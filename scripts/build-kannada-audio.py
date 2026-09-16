@@ -54,6 +54,16 @@ KANNADA = re.compile(r'[ಀ-೿]')
 SPEAKERS = ('Suresh', 'Anu', 'Chetan', 'Vidya')
 VOICES = ('Suresh', 'Anu')
 DEFAULT_VOICE = 'Suresh'
+# The model is autoregressive and sometimes keeps going after the word is finished,
+# which comes out as a short phrase rambling for seconds. Roughly, a clip should run
+# FIXED_SECONDS of lead-in plus PER_CHARACTER for each character; anything longer than
+# TOLERANCE times that is the model overrunning rather than speaking slowly. Fitted to
+# clips that sound right, then checked against the ones that do not.
+FIXED_SECONDS = 0.35
+PER_CHARACTER = 0.10
+TOLERANCE = 1.8
+RETRY_SEEDS = (0, 1, 2, 3, 4, 5)
+
 DELIVERY = ('{speaker} speaks in a casual, conversational tone, as if talking to a friend '
             'in everyday speech rather than reading aloud. The delivery is natural and '
             'expressive at a moderate pace. Very high quality recording, no background noise.')
@@ -138,6 +148,12 @@ def clip_name(phrase, wav_path, kbps):
     return f'{phrase}-{digest}.m4a'
 
 
+def plausible_seconds(text):
+    """About how long this phrase should take. Short words carry a fixed cost, so a
+    flat seconds-per-character rule would wrongly condemn them."""
+    return FIXED_SECONDS + PER_CHARACTER * len(text)
+
+
 def load_voice(speaker):
     """Return a render function. The model is gated, so the first run needs
     `hf auth login`; afterwards the weights are cached locally."""
@@ -166,14 +182,35 @@ def load_voice(speaker):
     style = style_tokenizer(DELIVERY.format(speaker=speaker), return_tensors='pt').to(device)
     print(f'  loaded on {device}')
 
-    def render(text):
-        set_seed(0)  # sampled decoding; fix it so rebuilds are reproducible
+    def attempt(text, seed):
+        set_seed(seed)  # sampled decoding; fixed per attempt so rebuilds are reproducible
         prompt = prompt_tokenizer(prepare_for_voice(text), return_tensors='pt').to(device)
         with torch.no_grad():
             generated = model.generate(
                 input_ids=style.input_ids, attention_mask=style.attention_mask,
                 prompt_input_ids=prompt.input_ids, prompt_attention_mask=prompt.attention_mask)
-        audio = generated.cpu().numpy().squeeze().astype(np.float32)
+        return generated.cpu().numpy().squeeze().astype(np.float32)
+
+    def render(text):
+        # Keep the first attempt that runs to a plausible length, else the shortest of
+        # them: a clip that overruns is worse than one that is merely a bit long.
+        limit = plausible_seconds(text) * TOLERANCE
+        best = None
+        for seed in RETRY_SEEDS:
+            audio = attempt(text, seed)
+            seconds = audio.size / SAMPLE_RATE
+            if best is None or seconds < best[0]:
+                best = (seconds, audio, seed)
+            if seconds <= limit:
+                if seed != RETRY_SEEDS[0]:
+                    print(f'      seed {seed} after {seed} overran ({seconds:.2f}s, '
+                          f'wanted under {limit:.2f}s)')
+                break
+        else:
+            print(f'      WARNING: every seed overran for "{text}" - kept the shortest '
+                  f'at {best[0]:.2f}s against a {limit:.2f}s budget')
+        audio = best[1]
+
         # Levels vary a lot between phrases; even them out so one clip is not
         # noticeably quieter than the next.
         peak = float(np.abs(audio).max()) if audio.size else 0.0
