@@ -152,7 +152,14 @@ def load_voice(speaker):
     except ValueError:
         pass  # already registered
 
-    device = 'mps' if torch.backends.mps.is_available() else 'cpu'
+    # cuda first: on a rented GPU box this is the whole point, and checking only for
+    # Apple's mps quietly left the GPU idle while the CPU did the work.
+    if torch.cuda.is_available():
+        device = 'cuda'
+    elif torch.backends.mps.is_available():
+        device = 'mps'
+    else:
+        device = 'cpu'
     model = ParlerTTSForConditionalGeneration.from_pretrained(MODEL_ID).to(device).eval()
     prompt_tokenizer = AutoTokenizer.from_pretrained(MODEL_ID, config=model.config)
     style_tokenizer = AutoTokenizer.from_pretrained(model.config.text_encoder._name_or_path)
